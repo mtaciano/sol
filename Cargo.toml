@@ -1,7 +1,7 @@
 [package]
 name = "sol"
 version = "0.1.0"
-authors = ["Miguel Taciano <miguel.taciano@unifesp.com>"]
+authors = ["Miguel Taciano <miguel.taciano@unifesp.br>"]
 edition = "2021"
 
 [[bin]]
