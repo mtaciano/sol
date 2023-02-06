@@ -1,0 +1,11 @@
+[package]
+name = "sol"
+version = "0.1.0"
+authors = ["Miguel Taciano <miguel.taciano@unifesp.com>"]
+edition = "2021"
+
+[[bin]]
+name = "ssc" # The Standard Sol Compiler
+path = "src/main.rs"
+
+[dependencies]
