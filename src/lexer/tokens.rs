@@ -39,6 +39,7 @@ pub enum Token {
     // Keywords
     Let,
     While,
+    For,
     If,
     Else,
     Return,
@@ -74,6 +75,7 @@ impl std::fmt::Display for Token {
             Token::RBracket => write!(f, "}}"),
             Token::Let => write!(f, "let"),
             Token::While => write!(f, "while"),
+            Token::For => write!(f, "for"),
             Token::If => write!(f, "if"),
             Token::Else => write!(f, "else"),
             Token::Return => write!(f, "return"),
