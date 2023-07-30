@@ -206,8 +206,6 @@ impl Lexer {
     }
 }
 
-// TODO: it seems that even when the interior state mutates
-// rust doesn't require that you use `let mut` when using `for tk in lexer`, maybe this is a bug?
 impl std::iter::Iterator for Lexer {
     type Item = Token;
 
