@@ -279,7 +279,6 @@ mod tests {
             Token::Semicolon,
         ];
         let real_tokens: Vec<Token> = lexer.collect();
-        println!("asdf");
 
         assert_eq!(expected_tokens, real_tokens);
     }
