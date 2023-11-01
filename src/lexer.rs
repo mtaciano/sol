@@ -9,7 +9,7 @@ pub struct Lexer {
     idx: usize,
     line: usize,
     column: usize,
-    first_token: bool,
+    is_first_token: bool,
 }
 
 impl Lexer {
@@ -19,17 +19,17 @@ impl Lexer {
             idx: 0,
             line: 1,
             column: 1,
-            first_token: true,
+            is_first_token: true,
         }
     }
 
     pub fn read_token(&mut self) -> Token {
         self.consume_whitespace();
 
-        match self.next() {
+        match self.next_char() {
             Some('=') => {
-                if self.peek() == Some('=') {
-                    self.consume();
+                if self.peek_char() == Some('=') {
+                    self.consume_char();
                     Token::Eq
                 } else {
                     Token::Assign
@@ -38,8 +38,8 @@ impl Lexer {
             Some('+') => Token::Plus,
             Some('-') => Token::Minus,
             Some('!') => {
-                if self.peek() == Some('=') {
-                    self.consume();
+                if self.peek_char() == Some('=') {
+                    self.consume_char();
                     Token::NotEq
                 } else {
                     Token::Bang
@@ -47,8 +47,12 @@ impl Lexer {
             }
             Some('*') => Token::Asterisk,
             Some('/') => {
-                if self.peek() == Some('*') {
-                    self.consume_comment();
+                if self.peek_char() == Some('*') {
+                    self.consume_block_comment();
+                    // Since the lexer ignores comments we need to call `read_token()` again
+                    self.read_token()
+                } else if self.peek_char() == Some('/') {
+                    self.consume_line_comment();
                     // Since the lexer ignores comments we need to call `read_token()` again
                     self.read_token()
                 } else {
@@ -56,16 +60,16 @@ impl Lexer {
                 }
             }
             Some('<') => {
-                if self.peek() == Some('=') {
-                    self.consume();
+                if self.peek_char() == Some('=') {
+                    self.consume_char();
                     Token::LtEq
                 } else {
                     Token::Lt
                 }
             }
             Some('>') => {
-                if self.peek() == Some('=') {
-                    self.consume();
+                if self.peek_char() == Some('=') {
+                    self.consume_char();
                     Token::GtEq
                 } else {
                     Token::Gt
@@ -114,16 +118,16 @@ impl Lexer {
 
     fn read_number(&mut self) -> Result<i32, std::num::ParseIntError> {
         let mut number = String::from(
-            self.current()
+            self.current_char()
                 .expect("Should be called only after read_token"),
         );
 
-        while let Some(peek_ch) = self.peek() {
+        while let Some(peek_ch) = self.peek_char() {
             if !peek_ch.is_numeric() {
                 break;
             }
 
-            number.push(self.next().expect("The char was peeked"));
+            number.push(self.next_char().expect("The char was peeked"));
         }
 
         number.parse()
@@ -131,22 +135,22 @@ impl Lexer {
 
     fn read_identifier(&mut self) -> String {
         let mut ident = String::from(
-            self.current()
+            self.current_char()
                 .expect("Should be called only after read_token"),
         );
 
-        while let Some(peek_ch) = self.peek() {
+        while let Some(peek_ch) = self.peek_char() {
             if !peek_ch.is_alphanumeric() && peek_ch != '_' {
                 break;
             }
 
-            ident.push(self.next().expect("The char was peeked"));
+            ident.push(self.next_char().expect("The char was peeked"));
         }
 
         ident
     }
 
-    fn current(&mut self) -> Option<char> {
+    fn current_char(&mut self) -> Option<char> {
         if self.idx >= self.input.len() {
             return None;
         }
@@ -154,11 +158,11 @@ impl Lexer {
         Some(self.input[self.idx])
     }
 
-    fn next(&mut self) -> Option<char> {
-        if !self.first_token {
+    fn next_char(&mut self) -> Option<char> {
+        if !self.is_first_token {
             self.idx += 1;
         }
-        self.first_token = false;
+        self.is_first_token = false;
 
         if self.idx >= self.input.len() {
             return None;
@@ -175,7 +179,7 @@ impl Lexer {
         Some(ch)
     }
 
-    fn peek(&self) -> Option<char> {
+    fn peek_char(&self) -> Option<char> {
         if self.idx + 1 >= self.input.len() {
             return None;
         }
@@ -183,33 +187,47 @@ impl Lexer {
         Some(self.input[self.idx + 1])
     }
 
-    fn consume(&mut self) {
-        let _ = self.next();
+    fn consume_char(&mut self) {
+        let _ = self.next_char();
     }
 
-    fn consume_comment(&mut self) {
-        if self.current() != Some('/') && self.peek() != Some('*') {
+    fn consume_block_comment(&mut self) {
+        if self.current_char() != Some('/') && self.peek_char() != Some('*') {
             return;
         }
 
-        while let Some(c) = self.next() {
-            if c == '*' && self.peek() == Some('/') {
+        while let Some(c) = self.next_char() {
+            if c == '*' && self.peek_char() == Some('/') {
                 /* Comments are like this in sol */
-                self.consume();
-                break;
+                self.consume_char();
+                return;
+            }
+        }
+    }
+
+    fn consume_line_comment(&mut self) {
+        if self.current_char() != Some('/') && self.peek_char() != Some('/') {
+            return;
+        }
+
+        while let Some(c) = self.next_char() {
+            if c == '\n' {
+                // They can also be like this
+                self.consume_char();
+                return;
             }
         }
     }
 
     fn consume_whitespace(&mut self) {
-        if let Some(ch) = self.current()
+        if let Some(ch) = self.current_char()
             && !ch.is_whitespace()
         {
             return;
         }
 
-        while self.peek().is_some() && self.peek().unwrap().is_whitespace() {
-            self.consume();
+        while self.peek_char().is_some() && self.peek_char().unwrap().is_whitespace() {
+            self.consume_char();
         }
     }
 }
@@ -260,6 +278,7 @@ mod tests {
             let a = 42;
             /* this is a comment */
             let b; /* this is another comment */
+            // this is another way of commenting
             b = 99;
         "#;
         let lexer = Lexer::new(input.into());
