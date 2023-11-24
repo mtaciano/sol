@@ -1,5 +1,6 @@
 mod tokens;
 
+use anyhow::{self, Context};
 use std::iter::Iterator;
 
 use tokens::Token;
@@ -23,85 +24,84 @@ impl Lexer {
         }
     }
 
-    pub fn read_token(&mut self) -> Token {
+    pub fn read_token(&mut self) -> Option<Token> {
         self.consume_whitespace();
 
         match self.next_char() {
             Some('=') => {
                 if self.peek_char() == Some('=') {
                     self.consume_char();
-                    Token::Eq
+                    Some(Token::Eq)
                 } else {
-                    Token::Assign
+                    Some(Token::Assign)
                 }
             }
-            Some('+') => Token::Plus,
-            Some('-') => Token::Minus,
+            Some('+') => Some(Token::Plus),
+            Some('-') => Some(Token::Minus),
             Some('!') => {
                 if self.peek_char() == Some('=') {
                     self.consume_char();
-                    Token::NotEq
+                    Some(Token::NotEq)
                 } else {
-                    Token::Bang
+                    Some(Token::Bang)
                 }
             }
-            Some('*') => Token::Asterisk,
+            Some('*') => Some(Token::Asterisk),
             Some('/') => {
                 if self.peek_char() == Some('*') {
                     self.consume_block_comment();
-                    // Since the lexer ignores comments we need to call `read_token()` again
-                    self.read_token()
                 } else if self.peek_char() == Some('/') {
                     self.consume_line_comment();
-                    // Since the lexer ignores comments we need to call `read_token()` again
-                    self.read_token()
                 } else {
-                    Token::Slash
+                    return Some(Token::Slash);
                 }
+
+                // Since the lexer ignores comments we need to call `read_token()` again
+                self.read_token()
             }
             Some('<') => {
                 if self.peek_char() == Some('=') {
                     self.consume_char();
-                    Token::LtEq
+                    Some(Token::LtEq)
                 } else {
-                    Token::Lt
+                    Some(Token::Lt)
                 }
             }
             Some('>') => {
                 if self.peek_char() == Some('=') {
                     self.consume_char();
-                    Token::GtEq
+                    Some(Token::GtEq)
                 } else {
-                    Token::Gt
+                    Some(Token::Gt)
                 }
             }
-            Some(',') => Token::Comma,
-            Some(';') => Token::Semicolon,
-            Some('(') => Token::LParen,
-            Some(')') => Token::RParen,
-            Some('{') => Token::LBrace,
-            Some('}') => Token::RBrace,
-            Some('[') => Token::LBracket,
-            Some(']') => Token::RBracket,
+            Some(',') => Some(Token::Comma),
+            Some(';') => Some(Token::Semicolon),
+            Some('(') => Some(Token::LParen),
+            Some(')') => Some(Token::RParen),
+            Some('{') => Some(Token::LBrace),
+            Some('}') => Some(Token::RBrace),
+            Some('[') => Some(Token::LBracket),
+            Some(']') => Some(Token::RBracket),
             Some(ch) if ch.is_alphabetic() => {
                 let ident = self.read_identifier();
                 match ident.as_str() {
-                    "let" => Token::Let,
-                    "fn" => Token::Fn,
-                    "if" => Token::If,
-                    "else" => Token::Else,
-                    "return" => Token::Return,
-                    "while" => Token::While,
-                    "for" => Token::For,
-                    _ => Token::Ident(ident),
+                    "let" => Some(Token::Let),
+                    "fn" => Some(Token::Fn),
+                    "if" => Some(Token::If),
+                    "else" => Some(Token::Else),
+                    "return" => Some(Token::Return),
+                    "while" => Some(Token::While),
+                    "for" => Some(Token::For),
+                    _ => Some(Token::Ident(ident)),
                 }
             }
             Some(ch) if ch.is_numeric() => {
                 let number = self.read_number();
 
                 match number {
-                    Ok(num) => Token::Integer(num),
-                    Err(_) => Token::Invalid,
+                    Ok(num) => Some(Token::Integer(num)),
+                    Err(_) => Some(Token::Invalid),
                 }
             }
             Some(ch) => {
@@ -109,18 +109,18 @@ impl Lexer {
                     self.consume_whitespace();
                     self.read_token()
                 } else {
-                    Token::Invalid
+                    Some(Token::Invalid)
                 }
             }
-            None => Token::Eol,
+            None => None,
         }
     }
 
-    fn read_number(&mut self) -> Result<i32, std::num::ParseIntError> {
-        let mut number = String::from(
-            self.current_char()
-                .expect("Should be called only after read_token"),
-        );
+    fn read_number(&mut self) -> anyhow::Result<i32> {
+        let mut number =
+            String::from(self.current_char().expect(
+                "Should be called only after read_token confirmed at least 1 char is valid",
+            ));
 
         while let Some(peek_ch) = self.peek_char() {
             if !peek_ch.is_numeric() {
@@ -130,14 +130,16 @@ impl Lexer {
             number.push(self.next_char().expect("The char was peeked"));
         }
 
-        number.parse()
+        let number = number.parse().context("read number token")?;
+
+        Ok(number)
     }
 
     fn read_identifier(&mut self) -> String {
-        let mut ident = String::from(
-            self.current_char()
-                .expect("Should be called only after read_token"),
-        );
+        let mut ident =
+            String::from(self.current_char().expect(
+                "Should be called only after read_token confirmed at least 1 char is valid",
+            ));
 
         while let Some(peek_ch) = self.peek_char() {
             if !peek_ch.is_alphanumeric() && peek_ch != '_' {
@@ -226,7 +228,7 @@ impl Lexer {
             return;
         }
 
-        while self.peek_char().is_some() && self.peek_char().unwrap().is_whitespace() {
+        while self.peek_char().is_some_and(char::is_whitespace) {
             self.consume_char();
         }
     }
@@ -236,14 +238,7 @@ impl Iterator for Lexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let tok = self.read_token();
-
-        // The lexer will return EOL when the index becomes bigger than the vec size
-        if tok == Token::Eol {
-            return None;
-        }
-
-        Some(tok)
+        self.read_token()
     }
 }
 

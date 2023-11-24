@@ -9,3 +9,4 @@ name = "ssc" # The Standard Sol Compiler
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0.75"

@@ -1,10 +1,11 @@
+use std::fmt::{self, Display, Formatter};
+
 type Name = String;
 
 #[derive(PartialEq, Debug)]
 pub enum Token {
     // Special tokens
     Invalid,
-    Eol,
 
     // Identifier
     Ident(Name),
@@ -46,11 +47,10 @@ pub enum Token {
     Fn,
 }
 
-impl std::fmt::Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         match self {
             Token::Invalid => write!(f, "Invalid"),
-            Token::Eol => write!(f, "EOL"),
             Token::Ident(name) => write!(f, "{name}"),
             Token::Integer(i) => write!(f, "{i}"),
             Token::Assign => write!(f, "="),
