@@ -1,17 +1,22 @@
-fn sum(var_one, var_two) -> int {
-    return (var_one / var_two) + (var_one - var_two);
+/* Returns an int */
+fun sum(x, y) int {
+    return x + y;
 }
 
-fn main() {
-    // Currently only int and none type exists
-    let foo;
-    foo = 999;
+/* Returns none (nothing) */
+fun main() {
+    decl foo;
+    foo = 42;
 
-    let bar = 42;
+    decl bar = 37;
 
-    let baz[32];
-    baz[0] = 123;
+    /* baz 0..63 = 1 */
+    decl baz[64] = [ 1 ];
+    // TODO: Maybe something more explicit
+    // decl baz[64] = 64[ 1 ]; ?
 
-    let this_value;
-    this_value = sum(foo, bar);
+    for (decl i = 0; i < length(baz); i += 1) {
+        print("values: {v}, {bar}; sum: ");
+        println("{sum(bar, v)}"); // 38
+    }
 }

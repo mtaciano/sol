@@ -1,29 +1,55 @@
-mod tokens;
+//! The lexing module for the sol language.
+//!
+//! This module contains all lexing related implementations, including the token representation
+//! used by the lexer, the lexer itself, and the unit tests for them.
 
-use anyhow::{self, Context};
-use std::iter::Iterator;
+pub mod tokens;
 
 use tokens::Token;
 
+use anyhow::Context;
+
+/// The lexer for the sol language.
+///
+/// A lexers main task is to transform an arbitrary input string into a list of tokens that have
+/// concise and pre-defined meanings. This step is the basis of any compiler, as it makes the task
+/// of parsing, checking and interpreting the input exponentially easier for later steps.
 pub struct Lexer {
+    /// The input string separated into chars.
     input: Vec<char>,
+    /// The current index of the character being accessed.
     idx: usize,
+    /// The current line.
     line: usize,
+    /// The current column.
     column: usize,
-    is_first_token: bool,
+    /// If the current character is the first being parsed by the lexer or not.
+    ///
+    /// This is needed because we mark the `idx` as the last returned character index, and
+    /// since we use `usize` as its type, we cannot use negative numbers. As such, we need to keep
+    /// track of the case where we didn't return any characters yet, meaning the `idx` is yet not
+    /// representative of the character index.
+    is_first_char: bool,
 }
 
 impl Lexer {
+    /// Create a new lexer instance.
     pub fn new(input: String) -> Self {
         Lexer {
             input: input.chars().collect(),
             idx: 0,
             line: 1,
             column: 1,
-            is_first_token: true,
+            is_first_char: true,
         }
     }
 
+    /// Return the next token in the string.
+    ///
+    /// This returns `Option<Token>` if any token (including invalid strings, represented as
+    /// `Token::Invalid`) was read, and `None` if there was no more content left to lex, meaning
+    /// the end of the input was reached. After that, every call to `read_token()` will return
+    /// `None` as the result.
     pub fn read_token(&mut self) -> Option<Token> {
         self.consume_whitespace();
 
@@ -86,8 +112,8 @@ impl Lexer {
             Some(ch) if ch.is_alphabetic() => {
                 let ident = self.read_identifier();
                 match ident.as_str() {
-                    "let" => Some(Token::Let),
-                    "fn" => Some(Token::Fn),
+                    "decl" => Some(Token::Decl),
+                    "fun" => Some(Token::Fun),
                     "if" => Some(Token::If),
                     "else" => Some(Token::Else),
                     "return" => Some(Token::Return),
@@ -161,10 +187,10 @@ impl Lexer {
     }
 
     fn next_char(&mut self) -> Option<char> {
-        if !self.is_first_token {
+        if !self.is_first_char {
             self.idx += 1;
         }
-        self.is_first_token = false;
+        self.is_first_char = false;
 
         if self.idx >= self.input.len() {
             return None;
@@ -270,21 +296,53 @@ mod tests {
     #[test]
     fn assignments_with_comments() {
         let input = r#"
-            let a = 42;
+            decl a = 42;
             /* this is a comment */
-            let b; /* this is another comment */
+            decl b; /* this is another comment */
             // this is another way of commenting
             b = 99;
         "#;
         let lexer = Lexer::new(input.into());
 
         let expected_tokens = vec![
-            Token::Let,
+            Token::Decl,
             Token::Ident(String::from("a")),
             Token::Assign,
             Token::Integer(42),
             Token::Semicolon,
-            Token::Let,
+            Token::Decl,
+            Token::Ident(String::from("b")),
+            Token::Semicolon,
+            Token::Ident(String::from("b")),
+            Token::Assign,
+            Token::Integer(99),
+            Token::Semicolon,
+        ];
+        let real_tokens: Vec<Token> = lexer.collect();
+
+        assert_eq!(expected_tokens, real_tokens);
+    }
+
+    #[test]
+    fn invalid_token() {
+        let input = r#"
+            decl a = 42;
+            /* this is a comment */
+            ^&~ b; /* this is another comment */
+            // this is another way of commenting
+            b = 99;
+        "#;
+        let lexer = Lexer::new(input.into());
+
+        let expected_tokens = vec![
+            Token::Decl,
+            Token::Ident(String::from("a")),
+            Token::Assign,
+            Token::Integer(42),
+            Token::Semicolon,
+            Token::Invalid,
+            Token::Invalid,
+            Token::Invalid,
             Token::Ident(String::from("b")),
             Token::Semicolon,
             Token::Ident(String::from("b")),

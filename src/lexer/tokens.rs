@@ -1,54 +1,90 @@
-use std::fmt::{self, Display, Formatter};
+//! The tokens used by the lexer for the sol language.
+//!
+//! This module contains all implementations related to the tokens for the language, such as how
+//! they are displayed, their names and what tokens exist.
+
+use std::fmt;
 
 type Name = String;
 
+/// The token representation of the sol language.
+///
+/// This is the list of all the possible tokens in the sol language, any string containing source
+/// code for the sol language should be decomposable into a list of these tokens.
 #[derive(PartialEq, Debug)]
 pub enum Token {
-    // Special tokens
+    /// Invalid input.
+    ///
+    /// An invalid input consists of either characters not present in the sol language (e.g. `~`, `:`)
+    /// or invalid combinations of characters (e.g. `42foo`).
     Invalid,
 
-    // Identifier
+    /// String identifier.
     Ident(Name),
 
-    // Literals
+    /// Integer literal (i.e. a number).
     Integer(i32),
 
-    // Operators
-    Assign,   // =
-    Plus,     // +
-    Minus,    // -
-    Bang,     // !
-    Asterisk, // *
-    Slash,    // /
-    Lt,       // <
-    LtEq,     // <=
-    Gt,       // >
-    GtEq,     // >=
-    Eq,       // ==
-    NotEq,    // !=
+    /// Assign operator (i.e. `=`).
+    Assign,
+    /// Plus operator (i.e. `+`).
+    Plus,
+    /// Minus operator (i.e. `-`).
+    Minus,
+    /// Negation operator (i.e. `!`).
+    Bang,
+    /// Multiplication operator (i.e. `*`).
+    Asterisk,
+    /// Division operator (i.e. `/`).
+    Slash,
+    /// Less than operator (i.e. `<`).
+    Lt,
+    /// Less than or equal operator (i.e. `<=`).
+    LtEq,
+    /// Greater than operator (i.e. `>`).
+    Gt,
+    /// Greater than or equal operator (i.e. `>=`).
+    GtEq,
+    /// Equal operator (i.e. `==`).
+    Eq,
+    /// Not equal operator (i.e. `!=`).
+    NotEq,
 
-    // Delimiters
-    Comma,     // ,
-    Semicolon, // ;
-    LParen,    // (
-    RParen,    // )
-    LBrace,    // {
-    RBrace,    // }
-    LBracket,  // [
-    RBracket,  // ]
+    /// Comma delimiter (i.e. `,`).
+    Comma,
+    /// Semicolon delimiter (i.e. `;`).
+    Semicolon,
+    /// Left parenthesis delimiter (i.e. `(`).
+    LParen,
+    /// Right parenthesis delimiter (i.e. `)`).
+    RParen,
+    /// Left brace delimiter (i.e. `{`).
+    LBrace,
+    /// Right brace delimiter (i.e. `}`).
+    RBrace,
+    /// Left square bracket delimiter (i.e. `[`).
+    LBracket,
+    /// Right square bracket delimiter (i.e. `]`).
+    RBracket,
 
-    // Keywords
-    Let,
+    /// `decl` keyword.
+    Decl,
+    /// `while` keyword.
     While,
+    /// `for` keyword.
     For,
+    /// `if` keyword.
     If,
+    /// `else` keyword.
     Else,
+    /// `return` keyword.
     Return,
-    Fn,
+    /// `fun` keyword.
+    Fun,
 }
 
-impl Display for Token {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Token::Invalid => write!(f, "Invalid"),
             Token::Ident(name) => write!(f, "{name}"),
@@ -73,13 +109,13 @@ impl Display for Token {
             Token::RBrace => write!(f, "]"),
             Token::LBracket => write!(f, "{{"),
             Token::RBracket => write!(f, "}}"),
-            Token::Let => write!(f, "let"),
+            Token::Decl => write!(f, "decl"),
             Token::While => write!(f, "while"),
             Token::For => write!(f, "for"),
             Token::If => write!(f, "if"),
             Token::Else => write!(f, "else"),
             Token::Return => write!(f, "return"),
-            Token::Fn => write!(f, "fn"),
+            Token::Fun => write!(f, "fun"),
         }
     }
 }
